@@ -1,4 +1,4 @@
-package com.ransom.d2r;
+package com.ransom.d2r.extractor;
 
 import javax.swing.*;
 import java.io.*;

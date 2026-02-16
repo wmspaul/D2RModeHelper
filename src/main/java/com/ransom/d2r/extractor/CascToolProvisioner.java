@@ -1,4 +1,4 @@
-package com.ransom.d2r;
+package com.ransom.d2r.extractor;
 
 import java.io.*;
 import java.nio.file.*;

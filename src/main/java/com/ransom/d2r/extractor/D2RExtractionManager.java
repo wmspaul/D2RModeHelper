@@ -1,4 +1,4 @@
-package com.ransom.d2r;
+package com.ransom.d2r.extractor;
 
 import java.io.*;
 import java.nio.file.*;
@@ -13,9 +13,9 @@ public class D2RExtractionManager {
     private Process runningProcess;
 
     public D2RExtractionManager(String d2rPath, String cacheDir, String cascToolPath) {
-        this.d2rDir = new File(d2rPath);  // CASC storage directory
-        this.excelCacheDir = new File(cacheDir, "excel");
-        this.cascTool = new File(cascToolPath);  // Path to the CASCExtractor tool
+        this.d2rDir = new File(d2rPath);
+        this.excelCacheDir = new File(cacheDir);
+        this.cascTool = new File(cascToolPath);
     }
 
     public void cancelExtraction() {

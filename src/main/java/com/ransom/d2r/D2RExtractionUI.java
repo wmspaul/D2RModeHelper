@@ -1,5 +1,8 @@
 package com.ransom.d2r;
 
+import com.ransom.d2r.extractor.CascToolProvisioner;
+import com.ransom.d2r.extractor.D2RExtractionManager;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -184,7 +187,7 @@ public class D2RExtractionUI {
                 D2RExtractionManager manager =
                         new D2RExtractionManager(
                                 pathField.getText(),
-                                "extracted",
+                                ".",
                                 cascTool.getAbsolutePath()
                         );
 

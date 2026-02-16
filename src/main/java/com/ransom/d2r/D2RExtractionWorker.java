@@ -1,5 +1,7 @@
 package com.ransom.d2r;
 
+import com.ransom.d2r.extractor.D2RExtractionManager;
+
 import javax.swing.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;

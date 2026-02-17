@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ReaderUtil {
+    public static enum ReportType {HTML, STRING};
+
     public static List<String[]> readTabFile(Path path) throws IOException {
         List<String[]> rows = new ArrayList<>();
         try (BufferedReader br = Files.newBufferedReader(path)) {
@@ -43,51 +45,42 @@ public class ReaderUtil {
 
     public static String generateComparisonReport(
             String extractedDir,
-            String modDir
+            String modDir,
+            ReportType reportType
     ) {
         try {
             List<String> txtFiles = getAllTxtFilesRelative(
                     modDir
             );
 
-            StringBuilder sb = new StringBuilder();
-            sb.append("The following is a report generated to list possible issues between an extracted D2R expansion and a mod");
-            sb.append("\nThis validates the following criteria:");
-            sb.append("\n\tMissing Headers - Checks if any of the D2R extracted headers (columns) are missing in the mod file");
-            sb.append("\n\tUnknown Headers - Checks if any of the mod headers (columns) do not exist in the D2R extracted file");
-            sb.append("\n\tMismatched Headers - Checks the order of the extracted headers vs the mod headers");
-            sb.append("\n\tMissing Entries - Checks if there are any row entries in the D2R files that are not in the mod file, matching based on first column value");
-            sb.append("\n\nResults:");
+            List<ParsedErrors> parsedErrors = new ArrayList<>();
             Path modPath = Paths.get(modDir);
             Path extractedPath = Paths.get(extractedDir);
             for (String txtFile : txtFiles) {
-                StringBuilder eb = new StringBuilder();
                 Path modTarget = modPath.resolve(txtFile);
                 Path extTarget = extractedPath.resolve(txtFile);
                 if (!Files.exists(extTarget)) {
-                    eb.append(" - Does not exist anymore!");
+                    parsedErrors.add(new ParsedErrors(txtFile, false, null));
                     continue;
                 }
                 List<String[]> modded = readTabFile(modTarget);
                 List<String[]> extracted = readTabFile(extTarget);
                 List<String> modHeaders = Arrays.asList(modded.getFirst());
                 List<String> extHeaders = Arrays.asList(extracted.getFirst());
-                List<String> missingHeaders = new ArrayList<>();
-                List<String> unknownHeaders = new ArrayList<>();
-                LinkedHashMap<String, String> mismatchHeaders = new LinkedHashMap<>();
-                List<String> missingEntries = new ArrayList<>();
+
+                ParsedErrors parsedFile = new ParsedErrors(txtFile, true, extHeaders);
 
                 boolean badHeaders = false;
                 for (String extHeader : extHeaders) {
                     if (!modHeaders.contains(extHeader)) {
-                        missingHeaders.add(extHeader);
+                        parsedFile.missingHeaders.add(extHeader);
                         badHeaders = true;
                     }
                 }
 
                 for (String modHeader : modHeaders) {
                     if (!extHeaders.contains(modHeader)) {
-                        unknownHeaders.add(modHeader);
+                        parsedFile.unknownHeaders.add(modHeader);
                         badHeaders = true;
                     }
                 }
@@ -97,7 +90,7 @@ public class ReaderUtil {
                         String extHeader = extHeaders.get(i);
                         String modHeader = modHeaders.get(i);
                         if (!extHeader.equals(modHeader)) {
-                            mismatchHeaders.put(extHeader, modHeader);
+                            parsedFile.mismatchedHeaders.put(extHeader, modHeader);
                         }
                     }
 
@@ -109,73 +102,53 @@ public class ReaderUtil {
                             String[] modRow = modded.get(ii);
                             if (key.equals(modRow[0])) {
                                 found = true;
-//                                for (int iii = 1; iii < modRow.length; iii++) {
-//                                    String extVal = extRow[iii];
-//                                    String modVal = modRow[iii];
-//                                    if (!extVal.equals(modVal)) {
-//                                        eb.append("\n\t\tValue mismatch:");
-//                                        eb.append("\n\t\t\tHeader Value: ");
-//                                        eb.append(extHeaders.get(iii));
-//                                        eb.append("\n\t\t\tExtracted Value: ");
-//                                        eb.append(extVal);
-//                                        eb.append("\n\t\t\tMod Value: ");
-//                                        eb.append(modVal);
-//                                    }
-//                                }
+                                for (int iii = 1; iii < modRow.length; iii++) {
+                                    String extVal = extRow[iii];
+                                    String modVal = modRow[iii];
+                                    if (!extVal.equals(modVal)) {
+                                        parsedFile.mismatchedEntries.put(
+                                                String.join("\t", extRow),
+                                                String.join("\t", modRow)
+                                        );
+                                        break;
+                                    }
+                                }
                                 break;
                             }
                         }
 
                         if (!found) {
-                            missingEntries.add(String.join("\t", extRow));
+                            parsedFile.missingEntries.add(String.join("\t", extRow));
                         }
                     }
                 }
 
-                if (!missingHeaders.isEmpty()) {
-                    eb.append("\n\t\tMissing Headers: ");
-                    eb.append(String.join(", ", missingHeaders));
-                }
-
-                if (!unknownHeaders.isEmpty()) {
-                    eb.append("\n\t\tUnknown Headers: ");
-                    eb.append(String.join(", ", unknownHeaders));
-                }
-
-                if (!mismatchHeaders.isEmpty()) {
-                    eb.append("\n\t\tMismatched Headers: ");
-                    mismatchHeaders.forEach((k, v) -> {
-                        eb.append("\n\t\t\tExpected: ");
-                        eb.append(k);
-                        eb.append("\n\t\t\tFound: ");
-                        eb.append(v);
-                    });
-                }
-
-                if (!missingEntries.isEmpty()) {
-                    eb.append("\n\t\tMissing Entries: ");
-                    eb.append("\n\t\t\tHeaders: '");
-                    eb.append(String.join("\t", extHeaders));
-                    eb.append("'");
-                    missingEntries.forEach(v -> {
-                        eb.append("\n\t\t\tRow: '");
-                        eb.append(v);
-                        eb.append("'");
-                    });
-                }
-
-                if (!eb.isEmpty()) {
-                    sb.append("\n\tFile: '");
-                    sb.append(txtFile);
-                    sb.append("'");
-                    sb.append(eb);
-                }
+                parsedErrors.add(parsedFile);
             }
 
-            Path outputReport = Paths.get("./D2R_Mod_Diff_Report.txt");
-
-            try (var writer = Files.newBufferedWriter(outputReport)) {
-                writer.write(sb.toString());
+            Path outputReport;
+            if (reportType.equals(ReportType.STRING)) {
+                outputReport = Paths.get("./D2R_Mod_Diff_Report.txt");
+                try (var writer = Files.newBufferedWriter(outputReport)) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("The following is a report generated to list possible issues between an extracted D2R expansion and a mod");
+                    sb.append("\nThis validates the following criteria:");
+                    sb.append("\n\tMissing Headers - Checks if any of the D2R extracted headers (columns) are missing in the mod file");
+                    sb.append("\n\tUnknown Headers - Checks if any of the mod headers (columns) do not exist in the D2R extracted file");
+                    sb.append("\n\tMismatched Headers - Checks the order of the extracted headers vs the mod headers");
+                    sb.append("\n\tMissing Entries - Checks if there are any row entries in the D2R files that are not in the mod file, matching based on first column value");
+                    sb.append("\n\tMismatched Entries - Checks if there are any row entries in the D2R files that have a column value different from the mod file");
+                    sb.append("\n\nResults:");
+                    parsedErrors.forEach(sb::append);
+                    writer.write(sb.toString());
+                }
+            }
+            else if (reportType.equals(ReportType.HTML)){
+                outputReport = Paths.get("./D2R_Mod_Diff_Report.html");
+                HtmlReportUtil.writeHtmlReport(parsedErrors, outputReport);
+            }
+            else {
+                return "Error: Unknown report type";
             }
 
             return "Report written to: " + outputReport.toAbsolutePath();
@@ -185,9 +158,93 @@ public class ReaderUtil {
         }
     }
 
+    public static class ParsedErrors {
+        final String file;
+        final boolean exists;
+        final List<String> extHeaders;
+        final List<String> missingHeaders = new ArrayList<>();
+        final List<String> unknownHeaders = new ArrayList<>();
+        final LinkedHashMap<String, String> mismatchedHeaders = new LinkedHashMap<>();
+        final List<String> missingEntries = new ArrayList<>();
+        final LinkedHashMap<String, String> mismatchedEntries = new LinkedHashMap<>();
+
+        public ParsedErrors(String file, boolean exists, List<String> extHeaders) {
+            this.file = file;
+            this.exists = exists;
+            this.extHeaders = extHeaders;
+        }
+
+        @Override
+        public String toString() {
+            if (!exists) return "\n\tFile: '" + file + "' no longer exists in the extracted folders!";
+            StringBuilder eb = new StringBuilder();
+            if (!missingHeaders.isEmpty()) {
+                eb.append("\n\t\tMissing Headers: ");
+                eb.append(String.join(", ", missingHeaders));
+            }
+
+            if (!unknownHeaders.isEmpty()) {
+                eb.append("\n\t\tUnknown Headers: ");
+                eb.append(String.join(", ", unknownHeaders));
+            }
+
+            if (!mismatchedHeaders.isEmpty()) {
+                eb.append("\n\t\tMismatched Headers: ");
+                mismatchedHeaders.forEach((k, v) -> {
+                    eb.append("\n\t\t\tExpected: ");
+                    eb.append(k);
+                    eb.append("\n\t\t\tFound: ");
+                    eb.append(v);
+                });
+            }
+
+            if (!missingEntries.isEmpty()) {
+                eb.append("\n\t\tMissing Entries: ");
+                eb.append("\n\t\t\tHeaders: '");
+                eb.append(String.join("\t", extHeaders));
+                eb.append("'");
+                missingEntries.forEach(v -> {
+                    eb.append("\n\t\t\tRow: '");
+                    eb.append(v);
+                    eb.append("'");
+                });
+            }
+
+            if (!mismatchedEntries.isEmpty()) {
+                eb.append("\n\t\tMismatched Entries: ");
+                eb.append("\n\t\t\tHeaders: '");
+                eb.append(String.join("\t", extHeaders));
+                eb.append("'");
+                mismatchedEntries.forEach((k, v) -> {
+                    eb.append("\n\t\t\tExtracted Row: '");
+                    eb.append(k);
+                    eb.append("'\n\t\t\tMod Row: '");
+                    eb.append(v);
+                    eb.append("'");
+                });
+            }
+
+            if (!eb.isEmpty()) {
+                return "\n\tFile: '" + file + "'" + eb;
+            }
+            return eb.toString();
+        }
+    }
+
     public static class RewriteRule {
         String fileName;
         Map<String,  ColumnRule> columnRules;
+        Map<String, RowRule> rowRules;
+
+        public static class RowRule {
+            final String matchOn;
+            final Integer colIndex;
+
+            public RowRule(String matchOn, Integer colIndex) {
+                this.matchOn = matchOn;
+                this.colIndex = colIndex;
+            }
+        }
 
         public static class ColumnRule {
             final String columnName;
@@ -244,7 +301,8 @@ public class ReaderUtil {
 
     public static void main(String[] args) throws IOException {
         String extractedDir = "C:\\Users\\spaul\\git\\D2RModHelper\\extracted-data";
-        String modDir = "D:\\Diablo II Resurrected\\mods\\Reimagined\\Reimagined.mpq";
-        System.out.println(generateComparisonReport(extractedDir, modDir));
+//        String modDir = "D:\\Diablo II Resurrected\\mods\\Reimagined\\Reimagined.mpq";
+        String modDir = "C:\\D2RMM 1.8.0\\mods\\Eastern_Sun_Resurrected";
+        System.out.println(generateComparisonReport(extractedDir, modDir, ReportType.HTML));
     }
 }

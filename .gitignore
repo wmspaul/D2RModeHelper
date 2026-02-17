@@ -1,7 +1,7 @@
 tools/
 target/
 *.txt
-*.html
+!**/*.txt
 !**/src/main/resources/tools
 extracted-data/
 !.mvn/wrapper/maven-wrapper.jar

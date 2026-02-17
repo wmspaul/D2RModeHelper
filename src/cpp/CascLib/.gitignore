@@ -1,0 +1,42 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# CMake related files
+/CMakeFiles/
+/CMakeCache.txt
+/*.cmake
+/Makefile
+
+# Visual Studio related files
+*.opensdf
+*.ncb
+*.sdf
+*.suo
+*.vcxproj.user
+
+# KDevelop related files
+*.kdev4
+
+# Intermediate directory
+/casc.dir/
+/Win32/
+/Debug/

@@ -3,7 +3,6 @@ target/
 *.txt
 !**/*.txt
 !**/src/main/resources/tools
-extracted-data/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

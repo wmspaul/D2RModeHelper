@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ReaderUtil {
-    public enum ReportType {HTML, STRING};
+    public enum ReportType {HTML, STRING}
 
     public static List<String[]> readTabFile(Path path) throws IOException {
         List<String[]> rows = new ArrayList<>();
@@ -234,9 +234,15 @@ public class ReaderUtil {
     }
 
     public static class RewriteRule {
-        String fileName;
-        Map<String,  ColumnRule> columnRules;
-        Map<String, RowRule> rowRules;
+        final String fileName;
+        final Map<String,  ColumnRule> columnRules;
+        final Map<String, RowRule> rowRules;
+
+        public RewriteRule(String fileName, Map<String, ColumnRule> columnRules, Map<String, RowRule> rowRules) {
+            this.fileName = fileName;
+            this.columnRules = columnRules;
+            this.rowRules = rowRules;
+        }
 
         public static class RowRule {
             final String matchOn;

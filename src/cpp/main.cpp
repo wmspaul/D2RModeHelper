@@ -196,7 +196,6 @@ int main(int argc, char** argv)
 	}
 	
 	strListFile = strDestDir + "/" + strListFile;
-	strDestDir += "/extracted-data";
 	
 	for (auto& c : strListFile) if (c == '\\') c = '/';
 	for (auto& c : strDestDir) if (c == '\\') c = '/';
@@ -237,22 +236,23 @@ int main(int argc, char** argv)
 		}
 
 		string strFullPath = findData.szFileName;
-		
-		// Normalize slashes
 		for (auto& c : strFullPath) if (c == '\\') c = '/';
 		
-		// Only process files in "data/global/excel/" and that end with ".txt"
-		if (strFullPath.size() > 4 && strFullPath.substr(strFullPath.size() - 4) == ".txt")
+		if (strFullPath.size() > 4 &&
+			strFullPath.substr(strFullPath.size() - 4) == ".txt" &&
+			strFullPath.find("data/global") != string::npos &&
+			strFullPath.find("data/global/excel/base/") == string::npos)
 		{
 			if (seen.insert(strFullPath).second) {
 				cout << "Found: " << strFullPath << endl;
 				results.push_back(strFullPath);
+				
 				size_t pos = strFullPath.find_last_of('/');
 				string ref = strFullPath.substr(0, pos);
-				// Remove leading "data:" if present
 				if (ref.rfind("data:", 0) == 0) {
 					ref = ref.substr(5);
 				}
+				
 				string extractPath = strDestDir + "/" + ref;
 				string filename = strFullPath.substr(pos + 1);
 				cout << "Extracting File: " << filename << ", Extracting Location: " << extractPath << endl;

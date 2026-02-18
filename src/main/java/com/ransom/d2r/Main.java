@@ -1,5 +1,6 @@
 package com.ransom.d2r;
 
+import com.ransom.d2r.objects.ExtractionRunner;
 import com.ransom.d2r.objects.ParsedErrors;
 import com.ransom.d2r.objects.ReportType;
 import com.ransom.d2r.util.*;
@@ -11,8 +12,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
-        final String extractedDir = ".\\extracted-data";
+    public static void main(String[] args) throws Exception {
+        final String extractedDir = ExtractionUtil.generate("D:\\Diablo II Resurrected", ".", new ExtractionRunner());
         final String globalExcelDir = extractedDir + "\\data\\global\\excel";
         final String outputDir = ".\\generated";
 
